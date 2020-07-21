@@ -1,22 +1,14 @@
 package ua.skillsup.practice;
 
-import java.math.BigDecimal;
 import java.util.*;
 import java.time.*;
 import java.util.stream.Collectors;
 
 public class ExampleDaoImpl implements ExampleDao {
-    private static ExampleDaoImpl exampleDaoInstance;
     private Map<LocalDate, List<ExampleEntity>> mapOfEntityLists;
 
-    private ExampleDaoImpl() {
-    }
-
-    public static ExampleDaoImpl getInstance() {
-        if (exampleDaoInstance == null) {
-            exampleDaoInstance = new ExampleDaoImpl();
-        }
-        return exampleDaoInstance;
+    public ExampleDaoImpl() {
+        mapOfEntityLists = new HashMap<>();
     }
 
     @Override
@@ -25,30 +17,22 @@ public class ExampleDaoImpl implements ExampleDao {
         if (entity == null || entity.getClass() != ExampleEntity.class) {
             return false;
         }
-//      check of the existence of a DB map:
-        if (mapOfEntityLists == null) mapOfEntityLists = new HashMap<>();
 //      check for the presence of a parameter in the DB map:
-        if (mapOfEntityLists.values().stream().anyMatch(lst -> lst.contains(entity))) {
+        if (mapOfEntityLists.values().stream().flatMap(dayList -> dayList.stream().map(ExampleEntity::getTitle)).
+                anyMatch(title -> entity.getTitle().equals(title))) {
+            System.out.println("Adding of item is impossible - You try to enter the item with duplicate title!");
             return false;
         }
 //      adding a new entity to the list of entities stored on the corresponding date:
-        ZoneId defaultZoneId = ZoneId.systemDefault();
-        LocalDate entityLocalDate = entity.getDateIn().atZone(defaultZoneId).toLocalDate();
-        List<ExampleEntity> dateListToAddEntity = mapOfEntityLists.get(entityLocalDate);
+        List<ExampleEntity> dateListToAddEntity = mapOfEntityLists.get(entity.getLocalDateInFromInstant());
         if (dateListToAddEntity == null) dateListToAddEntity = new ArrayList<>();
         dateListToAddEntity.add(entity);
-        mapOfEntityLists.put(entityLocalDate, dateListToAddEntity);
-        System.out.println("store");
+        mapOfEntityLists.put(entity.getLocalDateInFromInstant(), dateListToAddEntity);
         return true;
     }
 
     @Override
     public List<ExampleEntity> findAll() throws ExampleNetworkException {
-        if (mapOfEntityLists == null) mapOfEntityLists = new HashMap<>();
         return mapOfEntityLists.values().stream().flatMap(List::stream).collect(Collectors.toList());
-    }
-
-    public Map<LocalDate, List<ExampleEntity>> getDB() {
-        return Map.copyOf(mapOfEntityLists);
     }
 }

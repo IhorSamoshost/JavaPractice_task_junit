@@ -2,6 +2,8 @@ package ua.skillsup.practice;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Objects;
 
 public class ExampleEntity {
@@ -75,5 +77,14 @@ public class ExampleEntity {
                 ", dateIn=" + dateIn +
                 ", price=" + price +
                 '}';
+    }
+
+    public LocalDate getLocalDateInFromInstant() {
+        ZoneId defaultZoneId = ZoneId.systemDefault();
+        return this.getDateIn().atZone(defaultZoneId).toLocalDate();
+    }
+
+    public ExampleEntityDto toDto() {
+        return new ExampleEntityDto(this);
     }
 }

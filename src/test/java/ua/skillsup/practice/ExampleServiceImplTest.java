@@ -1,26 +1,21 @@
 package ua.skillsup.practice;
 
-import org.junit.BeforeClass;
-import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.MethodSorters;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
-import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @RunWith(MockitoJUnitRunner.class)
 public class ExampleServiceImplTest {
     public static final String NO_TITLE = null;
@@ -31,120 +26,85 @@ public class ExampleServiceImplTest {
     public static final String TOO_LONG_TITLE = "TitleTitleTitleTitleTitle";
     public static final BigDecimal TOO_SMALL_PRICE = BigDecimal.TEN;
 
-    private static ExampleServiceImpl exampleService = new ExampleServiceImpl();
-
-    private ExampleDaoImpl getMockedExampleDao() throws NoSuchFieldException, IllegalAccessException {
-        Field field = ExampleServiceImpl.class.getDeclaredField("exampleDao");
-        field.setAccessible(true);
-        return (ExampleDaoImpl) field.get(exampleService);
-    }
-
-    @BeforeClass
-    public static void setup() {
-        try {
-            ExampleDaoImpl mockedExampleDao = mock(ExampleDaoImpl.class);
-            Field field = ExampleServiceImpl.class.getDeclaredField("exampleDao");
-            field.setAccessible(true);
-            field.set(exampleService, mockedExampleDao);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
+    //  Сначала 6 юнит-тестов:
+    @Test
+    public void shouldNotSaveItemWithNullTitle() {
+        ExampleDaoImpl mockedExampleDao = mock(ExampleDaoImpl.class);
+        ExampleServiceImpl exampleService = new ExampleServiceImpl(mockedExampleDao);
+        exampleService.addNewItem(NO_TITLE, SOME_PRICE);
+        verify(mockedExampleDao, times(0)).store(any());
     }
 
     @Test
-    public void should1_PassIfTitleIsAbsent() {
-        try {
-            ExampleDaoImpl mockedExampleDao = getMockedExampleDao();
-            exampleService.addNewItem(NO_TITLE, SOME_PRICE);
-            verify(mockedExampleDao, times(0)).store(any());
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
+    public void shouldNotSaveItemWithTitleShorterThanThreeSymbols() {
+        ExampleDaoImpl mockedExampleDao = mock(ExampleDaoImpl.class);
+        ExampleServiceImpl exampleService = new ExampleServiceImpl(mockedExampleDao);
+        exampleService.addNewItem(TOO_SHORT_TITLE, SOME_PRICE);
+        verify(mockedExampleDao, times(0)).store(any());
     }
 
     @Test
-    public void should2_PassIfTitleShorterThanThreeSymbols() {
-        try {
-            ExampleDaoImpl mockedExampleDao = getMockedExampleDao();
-            exampleService.addNewItem(TOO_SHORT_TITLE, SOME_PRICE);
-            verify(mockedExampleDao, times(0)).store(any());
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
+    public void shouldNotSaveItemWithTitleLongerThanTwentySymbols() {
+        ExampleDaoImpl mockedExampleDao = mock(ExampleDaoImpl.class);
+        ExampleServiceImpl exampleService = new ExampleServiceImpl(mockedExampleDao);
+        exampleService.addNewItem(TOO_LONG_TITLE, SOME_PRICE);
+        verify(mockedExampleDao, times(0)).store(any());
     }
 
     @Test
-    public void should3_PassIfTitleLongerThanTwentySymbols() {
-        try {
-            ExampleDaoImpl mockedExampleDao = getMockedExampleDao();
-            exampleService.addNewItem(TOO_LONG_TITLE, SOME_PRICE);
-            verify(mockedExampleDao, times(0)).store(any());
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
+    public void shouldNotSaveItemWithNullPrice() {
+        ExampleDaoImpl mockedExampleDao = mock(ExampleDaoImpl.class);
+        ExampleServiceImpl exampleService = new ExampleServiceImpl(mockedExampleDao);
+        exampleService.addNewItem(SOME_TITLE, NO_PRICE);
+        verify(mockedExampleDao, times(0)).store(any());
     }
 
     @Test
-    public void should4_PassIfPriceIsAbsent() {
-        try {
-            ExampleDaoImpl mockedExampleDao = getMockedExampleDao();
-            exampleService.addNewItem(SOME_TITLE, NO_PRICE);
-            verify(mockedExampleDao, times(0)).store(any());
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
+    public void shouldNotSaveItemWithPriceLessThanFifteen() {
+        ExampleDaoImpl mockedExampleDao = mock(ExampleDaoImpl.class);
+        ExampleServiceImpl exampleService = new ExampleServiceImpl(mockedExampleDao);
+        exampleService.addNewItem(SOME_TITLE, TOO_SMALL_PRICE);
+        verify(mockedExampleDao, times(0)).store(any());
+    }
+
+    private Answer<List<ExampleEntity>> answerForFindAll = invocation -> List.of(
+            new ExampleEntity("Fruit", Instant.parse("2020-06-12T10:15:30.00Z"), BigDecimal.valueOf(18)),
+            new ExampleEntity("Beaf", Instant.parse("2020-06-12T12:45:33.00Z"), BigDecimal.valueOf(38)));
+
+    @Test
+    public void shouldReceiveMapWithSizeOneAndKeyTwelveSixTwentyAndValueTwentyEight() {
+        ExampleDaoImpl mockedExampleDao = mock(ExampleDaoImpl.class);
+        ExampleServiceImpl exampleService = new ExampleServiceImpl(mockedExampleDao);
+        when(mockedExampleDao.findAll()).thenAnswer(answerForFindAll);// now method "findAll" will return the list contains the two items
+        Map<LocalDate, BigDecimal> statisticMap = exampleService.getStatistic();
+        verify(mockedExampleDao, times(1)).findAll(); // check that method "findAll" was invoked
+        verifyNoMoreInteractions(mockedExampleDao); // check that there were no more calls to ExampleDao
+        assertEquals(1, statisticMap.size()); //check that the size of the reseived map is one
+        assertTrue(statisticMap.containsKey(LocalDate.of(2020, 06, 12))); //check that the key of the reseived map is 2020-06-12
+        assertEquals(BigDecimal.valueOf(28.00).setScale(2), statisticMap.get(LocalDate.of(2020, 6, 12)));
+    }
+
+    //  И два интеграционных теста:
+    @Test
+    public void shouldNotSaveItemWithDuplicateTitle() {
+        ExampleDaoImpl exampleDao = new ExampleDaoImpl();
+        ExampleServiceImpl exampleService = new ExampleServiceImpl(exampleDao);
+        exampleService.addNewItem("Fish", BigDecimal.valueOf(22));   // correct item to enter
+        exampleService.addNewItem("Fruit", BigDecimal.valueOf(33));  // another correct item to enter
+        exampleService.addNewItem("Meat", BigDecimal.valueOf(44));   // and one more correct item to enter
+        exampleService.addNewItem("Fruit", BigDecimal.valueOf(22.48)); // attempting to enter the item with duplicate title
+        assertEquals(3, exampleDao.findAll().size()); //check that the size of the received list is three
     }
 
     @Test
-    public void should5_PassIfPriceLessThanFifteen() {
-        try {
-            ExampleDaoImpl mockedExampleDao = getMockedExampleDao();
-            exampleService.addNewItem(SOME_TITLE, TOO_SMALL_PRICE);
-            verify(mockedExampleDao, times(0)).store(any());
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private Answer<List<ExampleEntity>> answerForFindAll = invocation -> List.of(new ExampleEntity(SOME_TITLE, Instant.now(), SOME_PRICE));
-
-    @Test
-    public void should6_StoreOneItemAndNotStoreSecondItemWithDuplicateTitle() {
-        try {
-            ExampleDaoImpl mockedExampleDao = getMockedExampleDao();
-            exampleService.addNewItem(SOME_TITLE, SOME_PRICE);
-            verify(mockedExampleDao).findAll();
-            verify(mockedExampleDao).store(any());// entered correct data and storing has passed
-            when(mockedExampleDao.findAll()).thenAnswer(answerForFindAll);// now method "findAll" will return the list contains the item with title "SOME_TITLE"
-            exampleService.addNewItem(SOME_TITLE, SOME_PRICE);
-            verify(mockedExampleDao, times(2)).findAll();
-            verify(mockedExampleDao).store(any());
-            verifyNoMoreInteractions(mockedExampleDao);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private Answer<Map<LocalDate, List<ExampleEntity>>> answerForGetDB = invocation -> Map.of(
-            LocalDate.of(2020, 06, 12),
-            Arrays.asList(new ExampleEntity("Fruit", Instant.parse("2020-06-12T10:15:30.00Z"), BigDecimal.valueOf(18)),
-                    new ExampleEntity("Beaf", Instant.parse("2020-06-12T12:45:33.00Z"), BigDecimal.valueOf(38))));
-
-    @Test
-    public void should7_ReceiveStatisticMapWithSize1key12_06_20andValue28() {
-        try {
-            ExampleDaoImpl mockedExampleDao = getMockedExampleDao();
-            when(mockedExampleDao.getDB()).thenAnswer(answerForGetDB);// now method "getDB" will return the map contains the two items on key 12.06.20
-            Map<LocalDate, BigDecimal> statisticMap = exampleService.getStatistic();
-            verify(mockedExampleDao).getDB();
-            verifyNoMoreInteractions(mockedExampleDao);
-            assertEquals(1, statisticMap.size());
-            assertTrue(statisticMap.containsKey(LocalDate.of(2020, 06, 12)));
-            assertArrayEquals(new BigDecimal[]{BigDecimal.valueOf(28).setScale(2)}, statisticMap.values().toArray());
-            assertEquals(BigDecimal.valueOf(28.00).setScale(2), statisticMap.get(LocalDate.of(2020, 6, 12)));
-
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
+    public void shouldReturnMapWithKeyTodayAndValueThirtyThree() {
+        ExampleDaoImpl exampleDao = new ExampleDaoImpl();
+        ExampleServiceImpl exampleService = new ExampleServiceImpl(exampleDao);
+        exampleService.addNewItem("Fish", BigDecimal.valueOf(22));   // correct item to enter
+        exampleService.addNewItem("Fruit", BigDecimal.valueOf(33));  // another correct item to enter
+        exampleService.addNewItem("Meat", BigDecimal.valueOf(44));   // and one more correct item to enter
+        assertEquals(Set.of(LocalDate.now()), exampleService.getStatistic().keySet()); //check that the received map has one correct key - today
+        //check that the reseived map has one correct value = 33:
+        assertEquals(BigDecimal.valueOf(33.00).setScale(2), exampleService.getStatistic().get(LocalDate.now()));
     }
 }
